@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Management Test</title>
+</head>
+<body>
+    <h1>User Management Test</h1>
+    <p>Testing the Add User functionality...</p>
+    
+    <div>
+        <h2>Test API Endpoints</h2>
+        <button onclick="testGetUsers()">Test GET Users</button>
+        <button onclick="testCreateUser()">Test Create User</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function testGetUsers() {
+            try {
+                const response = await fetch('/api/admin/users?page=1&limit=10');
+                const data = await response.json();
+                document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('results').innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        async function testCreateUser() {
+            try {
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'test' + Date.now() + '@example.com',
+                        password: 'testpassword123',
+                        firstName: 'Test',
+                        lastName: 'User',
+                        role: 'CLIENT',
+                        company: 'Test Company',
+                        sendWelcomeEmail: true,
+                        requirePasswordChange: false,
+                        isActive: true
+                    })
+                });
+                const data = await response.json();
+                document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('results').innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

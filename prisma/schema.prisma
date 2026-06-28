@@ -1,0 +1,627 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  name        String?
+  role        UserRole  @default(CLIENT)
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  profile            UserProfile?
+  sessions           UserSession[]
+  activities         UserActivity[]
+  teamMembers        TeamMember[]
+  managedTeams       Team[]            @relation("TeamManager")
+  assignedLeads      Lead[]            @relation("AssignedLeads")
+  interactions       LeadInteraction[] @relation("UserInteractions")
+  campaigns          Campaign[]        @relation("CampaignManager")
+  scheduledCalls     ScheduledCall[]
+  assignedCalls      ScheduledCall[]   @relation("AssignedCalls")
+  sentMessages       Message[]         @relation("MessageSender")
+  receivedMessages   Message[]         @relation("MessageReceiver")
+  documents          Document[]
+  supportTickets     SupportTicket[]
+  assignedTickets    SupportTicket[]   @relation("AssignedTickets")
+  supportReplies     SupportReply[]
+  aiCallsInitiated   AICall[]          @relation("AICallsInitiated")
+  aiCampaignsManaged AICampaign[]      @relation("AICampaignsManaged")
+  aiTemplatesCreated AITemplate[]      @relation("AITemplatesCreated")
+
+  @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  firstName   String?
+  lastName    String?
+  phone       String?
+  avatar      String?
+  company     String?
+  department  String?
+  position    String?
+  bio         String?
+  address     String?
+  city        String?
+  country     String?
+  preferences Json? // Store user preferences as JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String?  @unique
+  userAgent    String?
+  ipAddress    String?
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  resource  String?
+  metadata  Json? // Store additional activity data
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_activities")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  managerId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  manager User         @relation("TeamManager", fields: [managerId], references: [id])
+  members TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String         @id @default(cuid())
+  userId   String
+  teamId   String
+  role     TeamMemberRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+model Lead {
+  id         String       @id @default(cuid())
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  company    String?
+  status     LeadStatus   @default(NEW)
+  priority   LeadPriority @default(MEDIUM)
+  source     String?
+  assignedTo String? // User ID of assigned team member
+  value      Float?
+  notes      String?
+  metadata   Json? // Additional lead data
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  assignedUser User?             @relation("AssignedLeads", fields: [assignedTo], references: [id])
+  interactions LeadInteraction[]
+  aiInsights   AIInsight[]       @relation("LeadAIInsights")
+  aiCalls      AICall[]          @relation("LeadAICalls")
+
+  @@map("leads")
+}
+
+model LeadInteraction {
+  id           String               @id @default(cuid())
+  leadId       String
+  userId       String
+  type         InteractionType
+  direction    InteractionDirection
+  duration     Int? // Duration in seconds for calls
+  summary      String?
+  transcript   String?
+  recordingUrl String?
+  sentiment    String? // Sentiment analysis result
+  metadata     Json? // Additional interaction data
+  createdAt    DateTime             @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation("UserInteractions", fields: [userId], references: [id])
+
+  @@map("lead_interactions")
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  status      CampaignStatus @default(DRAFT)
+  type        CampaignType
+  managerId   String
+  script      String? // AI script for the campaign
+  settings    Json? // Campaign settings
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  manager User @relation("CampaignManager", fields: [managerId], references: [id])
+
+  @@map("campaigns")
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  config    Json // Store system configuration as JSON
+  updatedBy String // User ID of who made the last update
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  CLIENT
+}
+
+enum TeamMemberRole {
+  LEAD
+  MEMBER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InteractionType {
+  CALL
+  EMAIL
+  SMS
+  MEETING
+  NOTE
+}
+
+enum InteractionDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignType {
+  OUTREACH
+  NURTURING
+  FOLLOW_UP
+  SURVEY
+}
+
+model ScheduledCall {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?
+  scheduledFor DateTime
+  duration     Int // Duration in minutes
+  type         CallType   @default(VIDEO)
+  status       CallStatus @default(SCHEDULED)
+  meetingUrl   String?
+  userId       String // Who scheduled the call
+  assignedTo   String? // Who the call is assigned to
+  notes        String?
+  metadata     Json? // Additional call data
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user     User  @relation(fields: [userId], references: [id])
+  assignee User? @relation("AssignedCalls", fields: [assignedTo], references: [id])
+
+  @@map("scheduled_calls")
+}
+
+model Message {
+  id          String           @id @default(cuid())
+  subject     String?
+  content     String
+  type        MessageType      @default(EMAIL)
+  direction   MessageDirection @default(OUTBOUND)
+  status      MessageStatus    @default(DRAFT)
+  senderId    String
+  receiverId  String
+  threadId    String? // For message threading
+  attachments Json? // Store attachment info
+  metadata    Json? // Additional message data
+  sentAt      DateTime?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  sender   User @relation("MessageSender", fields: [senderId], references: [id])
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
+
+  @@map("messages")
+}
+
+model Document {
+  id          String           @id @default(cuid())
+  title       String
+  description String?
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  category    DocumentCategory @default(GENERAL)
+  tags        String? // Comma-separated tags
+  isPublic    Boolean          @default(false)
+  version     Int              @default(1)
+  uploadedBy  String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("documents")
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
+  IN_PERSON
+}
+
+enum CallStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MessageType {
+  EMAIL
+  SMS
+  IN_APP
+  PUSH
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  DRAFT
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum DocumentCategory {
+  CONTRACT
+  INVOICE
+  PROPOSAL
+  REPORT
+  PRESENTATION
+  GENERAL
+}
+
+model SupportTicket {
+  id           String         @id @default(cuid())
+  ticketNumber String         @unique
+  title        String
+  description  String
+  category     TicketCategory @default(GENERAL)
+  priority     TicketPriority @default(MEDIUM)
+  status       TicketStatus   @default(OPEN)
+  userId       String // Who created the ticket
+  assignedTo   String? // Who is assigned to resolve it
+  tags         String? // Comma-separated tags
+  attachments  Json? // Store attachment info
+  metadata     Json? // Additional ticket data
+  resolvedAt   DateTime?
+  resolution   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id])
+  assignee User?          @relation("AssignedTickets", fields: [assignedTo], references: [id])
+  replies  SupportReply[]
+
+  @@map("support_tickets")
+}
+
+model SupportReply {
+  id          String   @id @default(cuid())
+  ticketId    String
+  userId      String
+  content     String
+  isInternal  Boolean  @default(false) // Internal notes vs customer replies
+  attachments Json? // Store attachment info
+  createdAt   DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id])
+
+  @@map("support_replies")
+}
+
+// AI CRM Models
+model AICall {
+  id          String        @id @default(cuid())
+  callSid     String?       @unique // Twilio call SID
+  uniqueId    String        @unique // Internal unique identifier
+  leadId      String
+  campaignId  String?
+  initiatedBy String
+  script      String
+  purpose     AICallPurpose @default(FOLLOW_UP)
+  language    String        @default("en")
+  status      AICallStatus  @default(INITIATED)
+
+  // Conversation tracking
+  transcript Json? // Full conversation transcript
+  responses  Json? // AI responses and user inputs
+
+  // Call analytics
+  duration  Int? // Duration in seconds
+  startTime DateTime?
+  endTime   DateTime?
+
+  // AI analysis
+  sentiment      String? // positive, neutral, negative
+  sentimentScore Float? // -1 to 1
+  keyPoints      String? // JSON array of key points
+  summary        String?
+  actionItems    String? // JSON array of action items
+
+  // Recording
+  recordingUrl String?
+
+  // Follow-up
+  nextSteps        String?
+  followUpRequired Boolean @default(false)
+
+  // Integration metadata
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lead     Lead        @relation("LeadAICalls", fields: [leadId], references: [id], onDelete: Cascade)
+  user     User        @relation("AICallsInitiated", fields: [initiatedBy], references: [id])
+  campaign AICampaign? @relation("CampaignCalls", fields: [campaignId], references: [id])
+
+  @@map("ai_calls")
+}
+
+model AICampaign {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  type        AICampaignType   @default(OUTREACH)
+  status      AICampaignStatus @default(DRAFT)
+  managerId   String
+  script      String? // AI script template
+  settings    Json? // Campaign settings
+  targetLeads Json? // Target lead criteria
+  startDate   DateTime?
+  endDate     DateTime?
+
+  // Performance metrics
+  totalLeads     Int   @default(0)
+  contactedLeads Int   @default(0)
+  responseRate   Float @default(0)
+  conversionRate Float @default(0)
+
+  // Integration metadata
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  manager User     @relation("AICampaignsManaged", fields: [managerId], references: [id])
+  calls   AICall[] @relation("CampaignCalls")
+
+  @@map("ai_campaigns")
+}
+
+model AIInsight {
+  id         String      @id @default(cuid())
+  leadId     String
+  type       InsightType @default(SENTIMENT)
+  content    String
+  confidence Float? // 0 to 1
+  metadata   Json? // Additional insight data
+  createdAt  DateTime    @default(now())
+
+  lead Lead @relation("LeadAIInsights", fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("ai_insights")
+}
+
+model AIModel {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  provider  String // openai, google, etc.
+  model     String // gpt-4, gemini-pro, etc.
+  type      ModelType @default(CHAT)
+  settings  Json? // Model-specific settings
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("ai_models")
+}
+
+model AITemplate {
+  id        String       @id @default(cuid())
+  name      String
+  type      TemplateType @default(CALL_SCRIPT)
+  category  String?
+  content   String
+  variables Json? // Template variables
+  isActive  Boolean      @default(true)
+  createdBy String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  creator User @relation("AITemplatesCreated", fields: [createdBy], references: [id])
+
+  @@map("ai_templates")
+}
+
+enum TicketCategory {
+  TECHNICAL
+  BILLING
+  ACCOUNT
+  FEATURE_REQUEST
+  BUG_REPORT
+  GENERAL
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+// AI CRM Enums
+enum AICallPurpose {
+  FOLLOW_UP
+  QUALIFICATION
+  APPOINTMENT
+  SUPPORT
+  FEEDBACK
+  SALES
+  SURVEY
+}
+
+enum AICallStatus {
+  INITIATED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  BUSY
+  NO_ANSWER
+  CANCELLED
+}
+
+enum AICampaignType {
+  OUTREACH
+  NURTURING
+  FOLLOW_UP
+  SURVEY
+  SALES
+  SUPPORT
+}
+
+enum AICampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum InsightType {
+  SENTIMENT
+  INTENT
+  TOPIC
+  EMOTION
+  BEHAVIOR
+  RISK
+  OPPORTUNITY
+}
+
+enum ModelType {
+  CHAT
+  COMPLETION
+  EMBEDDING
+  IMAGE
+  SPEECH
+  VISION
+}
+
+enum TemplateType {
+  CALL_SCRIPT
+  SMS_TEMPLATE
+  EMAIL_TEMPLATE
+  WHATSAPP_TEMPLATE
+  VOICE_SCRIPT
+  CHAT_RESPONSE
+}

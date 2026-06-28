@@ -1,0 +1,20 @@
+[
+    {
+        "name": "Momentum AI CRM - Pro",
+        "description": "Full-featured AI-enabled CRM with automated calling, analytics, and multi-channel engagement for enterprise teams.",
+        "price": 249.99,
+        "category": "Software"
+    },
+    {
+        "name": "Momentum AI CRM - Business",
+        "description": "AI-enabled CRM with lead nurturing and feedback collection for small to medium businesses.",
+        "price": 99.99,
+        "category": "Software"
+    },
+    {
+        "name": "IntelliSupport Plugin",
+        "description": "An AI-driven voice calling plugin for existing CRM systems.",
+        "price": 49.99,
+        "category": "Plugin"
+    }
+]

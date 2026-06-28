@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Starlight Enterprises",
+    "industry": "Technology",
+    "contactEmail": "john.doe@starlight.com",
+    "status": "ACTIVE"
+  },
+  {
+    "name": "Riverstone Corp",
+    "industry": "Manufacturing",
+    "contactEmail": "jane.smith@riverstone.com",
+    "status": "ACTIVE"
+  },
+  {
+    "name": "Phoenix Holdings",
+    "industry": "Finance",
+    "contactEmail": "samuel.jones@phoenix.com",
+    "status": "ONBOARDING"
+  },
+  {
+    "name": "Greenleaf Organics",
+    "industry": "Retail",
+    "contactEmail": "emily.white@greenleaf.com",
+    "status": "INACTIVE"
+  }
+]

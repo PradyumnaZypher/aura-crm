@@ -1,0 +1,30 @@
+[
+  {
+    "email": "contact@innovatech.com",
+    "name": "Alex Chen - Innovatech",
+    "phone": "+1-555-0101",
+    "status": "NEW",
+    "source": "Website Form"
+  },
+  {
+    "email": "info@quantum-dynamics.net",
+    "name": "Brenda Maccall",
+    "phone": "+1-555-0102",
+    "status": "CONTACTED",
+    "source": "Trade Show"
+  },
+  {
+    "email": "support@summit-logistics.org",
+    "name": "Carlos Gomez",
+    "phone": "+44-20-7946-0958",
+    "status": "QUALIFIED",
+    "source": "Referral"
+  },
+  {
+    "email": "hr@apex-constructs.co",
+    "name": "Diana Prince",
+    "phone": "+1-555-0104",
+    "status": "PROPOSAL_SENT",
+    "source": "Cold Call"
+  }
+]
