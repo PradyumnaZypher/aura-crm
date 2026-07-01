@@ -1,459 +1,197 @@
-// 'use client'
+"use client"
 
-// import { useState, useEffect } from 'react'
-// import DashboardLayout from '@/components/layout/dashboard-layout'
-// import EnhancedNavbar from '@/components/ui/enhanced-navbar'
-// import { Button } from '@/components/ui/button'
-// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-// import { Badge } from '@/components/ui/badge'
-// import {
-//   HelpCircle,
-//   User,
-//   Activity,
-//   MessageSquare,
-//   Plus,
-//   ArrowRight,
-//   History,
-//   Phone,
-//   Mail,
-//   FileText,
-//   Bot,
-//   PhoneCall,
-// } from 'lucide-react'
-// import Link from 'next/link'
-
-// import AIAssistantPanel from '@/components/client/ai-assistant-panel'
-// import AIInteractionsModal from '@/components/client/ai-interactions-modal'
-// import AICallingPanel from '@/components/client/ai-calling-panel'
-
-// export default function ClientDashboard() {
-//   const [userName, setUserName] = useState<string>('')
-//   const [userAvatar, setUserAvatar] = useState<string>('')
-//   const [interactions, setInteractions] = useState<any[]>([])
-//   const [supportTickets, setSupportTickets] = useState<any[]>([])
-//   const [messages, setMessages] = useState<any[]>([])
-//   const [showInteractionsModal, setShowInteractionsModal] = useState(false)
-//   const [showAIInteractionsModal, setShowAIInteractionsModal] = useState(false)
-//   const [showAICallingPanel, setShowAICallingPanel] = useState(false)
-//   const [selectedLead, setSelectedLead] = useState<any>(null)
-//   const [loading, setLoading] = useState(true)
-
-//   useEffect(() => {
-//     const userData = localStorage.getItem('user')
-//     if (userData) {
-//       const user = JSON.parse(userData)
-//       setUserName(
-//         user.name ||
-//           `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim() ||
-//           'User'
-//       )
-//       setUserAvatar(user.profile?.avatar || '')
-//     }
-//     fetchDashboardData()
-//   }, [])
-
-//   const fetchDashboardData = async () => {
-//     try {
-//       const token = localStorage.getItem('token')
-
-//       // Fetch interactions
-//       const interactionsResponse = await fetch('/api/interactions', {
-//         headers: { Authorization: `Bearer ${token}` },
-//       })
-//       if (interactionsResponse.ok) {
-//         const data = await interactionsResponse.json()
-//         setInteractions(data.interactions || [])
-//       }
-
-//       // Fetch support tickets
-//       const ticketsResponse = await fetch('/api/support-tickets', {
-//         headers: { Authorization: `Bearer ${token}` },
-//       })
-//       if (ticketsResponse.ok) {
-//         const data = await ticketsResponse.json()
-//         setSupportTickets(data.tickets || [])
-//       }
-
-//       // Fetch messages
-//       const messagesResponse = await fetch('/api/messages', {
-//         headers: { Authorization: `Bearer ${token}` },
-//       })
-//       if (messagesResponse.ok) {
-//         const data = await messagesResponse.json()
-//         setMessages(data.messages || [])
-//       }
-//     } catch (error) {
-//       console.error('Error fetching dashboard data:', error)
-//     } finally {
-//       setLoading(false)
-//     }
-//   }
-
-//   // Auto-refresh every 30 seconds
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       fetchDashboardData()
-//     }, 30000)
-//     return () => clearInterval(interval)
-//   }, [])
-
-//   // Listen for storage events (cross-tab updates)
-//   useEffect(() => {
-//     const handleStorageChange = (e: StorageEvent) => {
-//       if (e.key === 'interaction_created' || e.key === 'dashboard_refresh') {
-//         fetchDashboardData()
-//       }
-//     }
-//     window.addEventListener('storage', handleStorageChange)
-//     return () => window.removeEventListener('storage', handleStorageChange)
-//   }, [])
-
-//   // Refresh when window gains focus
-//   useEffect(() => {
-//     const handleFocus = () => {
-//       fetchDashboardData()
-//     }
-//     window.addEventListener('focus', handleFocus)
-//     return () => window.removeEventListener('focus', handleFocus)
-//   }, [])
-
-//   const getInteractionIcon = (type: string) => {
-//     switch (type) {
-//       case 'call':
-//         return <Phone className="w-4 h-4" />
-//       case 'email':
-//         return <Mail className="w-4 h-4" />
-//       case 'meeting':
-//         return <FileText className="w-4 h-4" />
-//       default:
-//         return <MessageSquare className="w-4 h-4" />
-//     }
-//   }
-
-//   const getInteractionColor = (type: string) => {
-//     switch (type) {
-//       case 'call':
-//         return 'bg-blue-100 text-blue-600'
-//       case 'email':
-//         return 'bg-green-100 text-green-600'
-//       case 'meeting':
-//         return 'bg-purple-100 text-purple-600'
-//       default:
-//         return 'bg-gray-100 text-gray-600'
-//     }
-//   }
-
-//   const handleAICall = (lead?: any) => {
-//     if (lead) {
-//       setSelectedLead(lead)
-//     } else {
-//       setSelectedLead({
-//         id: 'demo-lead',
-//         firstName: 'Demo',
-//         lastName: 'Contact',
-//         name: 'Demo Contact',
-//         phone: '+1234567890',
-//         company: 'Demo Company',
-//       })
-//     }
-//     setShowAICallingPanel(true)
-//   }
-
-//   return (
-//     <DashboardLayout userRole="client">
-//       {/* Header */}
-//       <header className="bg-white border-b border-slate-200">
-//         <div className="px-6 py-4">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <h1 className="text-2xl font-bold text-slate-900">AI CRM Dashboard</h1>
-//               <p className="text-slate-600">Welcome back! Here's your activity overview</p>
-//             </div>
-//             <EnhancedNavbar
-//               userName={userName}
-//               userAvatar={userAvatar}
-//               onLogout={() => {
-//                 localStorage.removeItem('token')
-//                 localStorage.removeItem('user')
-//                 window.location.href = '/login'
-//               }}
-//             />
-//           </div>
-//         </div>
-//       </header>
-
-//       <div className="p-6">
-//         {/* Welcome Section */}
-//         <div className="bg-gradient-to-r from-purple-500 to-blue-600 text-white rounded-lg p-6 mb-8">
-//           <h2 className="text-2xl font-bold mb-2">Welcome to AI CRM</h2>
-//           <p className="text-purple-100">
-//             Track your interactions, manage your profile, and get support
-//           </p>
-//         </div>
-
-//         {/* Quick Stats */}
-//         {/* Cards grid omitted for brevity — (keep same JSX from your source) */}
-
-//         {/* Recent Activity */}
-//         {/* Keep same JSX from your original code for recent activity & modals */}
-
-//         {/* AI Assistant Panel */}
-//         <AIAssistantPanel userId={userName} />
-
-//         {/* AI Interactions Modal */}
-//         <AIInteractionsModal
-//           isOpen={showAIInteractionsModal}
-//           onClose={() => setShowAIInteractionsModal(false)}
-//           userId={userName}
-//         />
-
-//         {/* AI Calling Panel */}
-//         <AICallingPanel
-//           isOpen={showAICallingPanel}
-//           onClose={() => setShowAICallingPanel(false)}
-//           leadId={selectedLead?.id}
-//           leadName={selectedLead?.name}
-//           leadPhone={selectedLead?.phone}
-//         />
-//       </div>
-//     </DashboardLayout>
-//   )
-// }
-
-'use client'
-
-import { useState, useEffect } from 'react'
-import VapiCallButton from '@/components/VapiCallButton' // Import added
-// import AIChatButton from '@/components/AIChatButton'; // 1. Import
-import ExternalChatTrigger from '@/components/ExternalChatTrigger';
-import AIChatTrigger from '@/components/AIChatTrigger';
-import DashboardLayout from '@/components/layout/dashboard-layout'
-import EnhancedNavbar from '@/components/ui/enhanced-navbar'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { motion } from "framer-motion"
 import {
-  HelpCircle,
-  User,
-  Activity,
-  MessageSquare,
-  Plus,
-  ArrowRight,
-  History,
-  Phone,
-  Mail,
-  FileText,
-  Bot,
-  PhoneCall,
-} from 'lucide-react'
-import Link from 'next/link'
+  Target, Phone, FileText, HeadphonesIcon, Calendar,
+  CheckCircle2, Clock, ArrowUpRight, Sparkles, TrendingUp,
+} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import Link from "next/link"
+import { clientStats, clientCalendarEvents, mockLeads } from "@/lib/mock-data"
 
-import AIAssistantPanel from '@/components/client/ai-assistant-panel'
-import AIInteractionsModal from '@/components/client/ai-interactions-modal'
-import AICallingPanel from '@/components/client/ai-calling-panel'
+const calendarTypeColors: Record<string, string> = {
+  call: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  meeting: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  demo: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+}
 
 export default function ClientDashboard() {
-  const [userName, setUserName] = useState<string>('')
-  const [userAvatar, setUserAvatar] = useState<string>('')
-  const [interactions, setInteractions] = useState<any[]>([])
-  const [supportTickets, setSupportTickets] = useState<any[]>([])
-  const [messages, setMessages] = useState<any[]>([])
-  const [showInteractionsModal, setShowInteractionsModal] = useState(false)
-  const [showAIInteractionsModal, setShowAIInteractionsModal] = useState(false)
-  const [showAICallingPanel, setShowAICallingPanel] = useState(false)
-  const [selectedLead, setSelectedLead] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      const user = JSON.parse(userData)
-      setUserName(
-        user.name ||
-          `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim() ||
-          'User'
-      )
-      setUserAvatar(user.profile?.avatar || '')
-    }
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      const token = localStorage.getItem('token')
-
-      // Fetch interactions
-      const interactionsResponse = await fetch('/api/interactions', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (interactionsResponse.ok) {
-        const data = await interactionsResponse.json()
-        setInteractions(data.interactions || [])
-      }
-
-      // Fetch support tickets
-      const ticketsResponse = await fetch('/api/support-tickets', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (ticketsResponse.ok) {
-        const data = await ticketsResponse.json()
-        setSupportTickets(data.tickets || [])
-      }
-
-      // Fetch messages
-      const messagesResponse = await fetch('/api/messages', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (messagesResponse.ok) {
-        const data = await messagesResponse.json()
-        setMessages(data.messages || [])
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchDashboardData()
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Listen for storage events (cross-tab updates)
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'interaction_created' || e.key === 'dashboard_refresh') {
-        fetchDashboardData()
-      }
-    }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
-
-  // Refresh when window gains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchDashboardData()
-    }
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
-
-  const getInteractionIcon = (type: string) => {
-    switch (type) {
-      case 'call':
-        return <Phone className="w-4 h-4" />
-      case 'email':
-        return <Mail className="w-4 h-4" />
-      case 'meeting':
-        return <FileText className="w-4 h-4" />
-      default:
-        return <MessageSquare className="w-4 h-4" />
-    }
-  }
-
-  const getInteractionColor = (type: string) => {
-    switch (type) {
-      case 'call':
-        return 'bg-blue-100 text-blue-600'
-      case 'email':
-        return 'bg-green-100 text-green-600'
-      case 'meeting':
-        return 'bg-purple-100 text-purple-600'
-      default:
-        return 'bg-gray-100 text-gray-600'
-    }
-  }
-
-  const handleAICall = (lead?: any) => {
-    if (lead) {
-      setSelectedLead(lead)
-    } else {
-      setSelectedLead({
-        id: 'demo-lead',
-        firstName: 'Demo',
-        lastName: 'Contact',
-        name: 'Demo Contact',
-        phone: '+1234567890',
-        company: 'Demo Company',
-      })
-    }
-    setShowAICallingPanel(true)
-  }
+  const myLeads = mockLeads.slice(0, 3)
 
   return (
-    <DashboardLayout userRole="client">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">AI CRM Dashboard</h1>
-              <p className="text-slate-600">Welcome back! Here's your activity overview</p>
+    <div className="space-y-6">
+      {/* Welcome banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative glass-card rounded-2xl p-6 overflow-hidden"
+      >
+        <div className="absolute inset-0 gradient-aura opacity-10 pointer-events-none" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <p className="text-xs text-primary font-medium">AI Assistant Active</p>
             </div>
-            
-            {/* --- MODIFIED SECTION --- */}
-            <div className="flex items-center gap-4">
-              <VapiCallButton />
-              <AIChatTrigger />
-              <ExternalChatTrigger />
-              {/* <AIChatButton /> */}
-              <EnhancedNavbar
-                userName={userName}
-                userAvatar={userAvatar}
-                onLogout={() => {
-                  localStorage.removeItem('token')
-                  localStorage.removeItem('user')
-                  window.location.href = '/login'
-                }}
-              />
-            </div>
-            {/* ------------------------ */}
-
+            <h1 className="text-2xl font-bold text-foreground">Welcome back, Jordan</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Your next AI call is <span className="text-foreground font-medium">{clientStats.nextCallDate}</span>
+            </p>
           </div>
+          <Button className="gradient-aura text-white border-0 gap-2 hidden sm:flex">
+            <Phone className="w-4 h-4" />
+            Join Call
+          </Button>
         </div>
-      </header>
+      </motion.div>
 
-      <div className="p-6">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-purple-500 to-blue-600 text-white rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-2">Welcome to AI CRM</h2>
-          <p className="text-purple-100">
-            Track your interactions, manage your profile, and get support
-          </p>
-        </div>
-
-        {/* Quick Stats */}
-        {/* Cards grid omitted for brevity — (keep same JSX from your source) */}
-
-        {/* Recent Activity */}
-        {/* Keep same JSX from your original code for recent activity & modals */}
-
-        {/* AI Assistant Panel */}
-        <AIAssistantPanel userId={userName} />
-
-        {/* AI Interactions Modal */}
-        <AIInteractionsModal
-          isOpen={showAIInteractionsModal}
-          onClose={() => setShowAIInteractionsModal(false)}
-          userId={userName}
-        />
-
-        {/* AI Calling Panel */}
-        <AICallingPanel
-          isOpen={showAICallingPanel}
-          onClose={() => setShowAICallingPanel(false)}
-          leadId={selectedLead?.id}
-          leadName={selectedLead?.name}
-          leadPhone={selectedLead?.phone}
-        />
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Active Leads", value: clientStats.activeLeads, icon: Target, color: "text-chart-1" },
+          { label: "Scheduled Calls", value: clientStats.scheduledCalls, icon: Phone, color: "text-chart-2" },
+          { label: "Open Tickets", value: clientStats.openTickets, icon: HeadphonesIcon, color: "text-chart-5" },
+          { label: "Contract Value", value: `$${(clientStats.contractValue / 1000).toFixed(0)}K`, icon: TrendingUp, color: "text-chart-3" },
+        ].map((stat, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            className="glass-card rounded-xl p-4"
+          >
+            <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
+            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+          </motion.div>
+        ))}
       </div>
-    </DashboardLayout>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* My leads */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="lg:col-span-2"
+        >
+          <Card className="glass-card border-0">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">My Assigned Leads</CardTitle>
+                <Link href="/leads" className="text-xs text-primary hover:underline flex items-center gap-1">
+                  View all <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {myLeads.map((lead) => (
+                <div key={lead.id} className="glass rounded-xl p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">{lead.name}</p>
+                      <p className="text-xs text-muted-foreground">{lead.company}</p>
+                    </div>
+                    <Badge
+                      className={`text-xs border-0 ${
+                        lead.status === "NEGOTIATION" ? "bg-orange-500/15 text-orange-600 dark:text-orange-400" :
+                        lead.status === "PROPOSAL" ? "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400" :
+                        lead.status === "QUALIFIED" ? "bg-violet-500/15 text-violet-600 dark:text-violet-400" :
+                        "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {lead.status}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium text-foreground">${(lead.value / 1000).toFixed(0)}K</span>
+                    </div>
+                    <Progress
+                      value={
+                        lead.status === "CLOSED_WON" ? 100 :
+                        lead.status === "NEGOTIATION" ? 80 :
+                        lead.status === "PROPOSAL" ? 60 :
+                        lead.status === "QUALIFIED" ? 40 :
+                        lead.status === "CONTACTED" ? 20 : 10
+                      }
+                      className="h-1.5"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    {lead.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">{tag}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Calendar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <Card className="glass-card border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                Upcoming Sessions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {clientCalendarEvents.map((event) => (
+                <div key={event.id} className="flex items-start gap-3 p-3 bg-background/40 rounded-lg border border-border/50">
+                  <div className="flex-shrink-0 text-center min-w-[36px]">
+                    <p className="text-xs text-muted-foreground">{event.date.split("-")[2]}</p>
+                    <p className="text-xs font-bold text-primary">
+                      {new Date(event.date).toLocaleString("default", { month: "short" })}
+                    </p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-foreground truncate">{event.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{event.time}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{event.lead}</p>
+                  </div>
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${calendarTypeColors[event.type] ?? "bg-muted text-muted-foreground"}`}>
+                    {event.type}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Recent activity */}
+          <Card className="glass-card border-0 mt-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { icon: CheckCircle2, color: "text-emerald-500", text: "Proposal sent for NovaTech", time: "2h ago" },
+                { icon: Phone, color: "text-primary", text: "AI call completed – 12m34s", time: "5h ago" },
+                { icon: FileText, color: "text-cyan-500", text: "Contract draft uploaded", time: "1d ago" },
+                { icon: Clock, color: "text-amber-500", text: "Follow-up scheduled", time: "2d ago" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <item.icon className={`w-4 h-4 flex-shrink-0 ${item.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground">{item.text}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground flex-shrink-0">{item.time}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </div>
   )
 }

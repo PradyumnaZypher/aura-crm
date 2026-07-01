@@ -1,393 +1,278 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Eye, EyeOff, Mail, Lock, User, Building, AlertCircle, Chrome, Github } from 'lucide-react'
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { Sparkles, Shield, Users, BarChart3, Eye, EyeOff, CheckCircle2, AlertCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+type Role = "ADMIN" | "MANAGER" | "CLIENT"
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    company: '',
-    role: '',
-    agreeToTerms: false
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [step, setStep] = useState(1)
   const router = useRouter()
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
-  }
-
-  const handleRoleSelect = (role: string) => {
-    setFormData(prev => ({ ...prev, role }))
-    setStep(2)
-  }
+  const [role, setRole] = useState<Role>("CLIENT")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [company, setCompany] = useState("")
+  const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError('')
+    setLoading(true)
+    setError("")
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      setIsLoading(false)
-      return
-    }
+    // Split name into first and last
+    const nameParts = name.trim().split(" ")
+    const firstName = nameParts[0] || ""
+    const lastName = nameParts.slice(1).join(" ") || "User"
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          password,
+          role,
+          company,
+          agreeToTerms: true,
+        }),
       })
 
       const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.message || 'Signup failed')
+        throw new Error(data.message || "Registration failed")
       }
 
-      // Store token and user data
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("user", JSON.stringify(data.user))
 
-      // Redirect based on role
       const redirectPath = `/${data.user.role.toLowerCase()}/dashboard`
       router.push(redirectPath)
     } catch (err: any) {
-      setError(err.message || 'An error occurred during signup')
-    } finally {
-      setIsLoading(false)
+      setError(err.message || "An error occurred during registration")
+      setLoading(false)
     }
   }
 
-  const isStep1Valid = formData.firstName && formData.lastName && formData.email
-  const isStep2Valid = formData.password && formData.confirmPassword && formData.agreeToTerms
+  const perks = [
+    "14-day free trial, no credit card required",
+    "AI voice analytics from day one",
+    "Unlimited leads & contacts",
+    "Cancel anytime",
+  ]
 
-  if (step === 1) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">AI</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
-            <p className="text-slate-600 mt-2">Get started with your free trial</p>
+  return (
+    <div className="min-h-screen flex bg-background mesh-bg overflow-hidden">
+      {/* Left panel */}
+      <div className="hidden lg:flex flex-col justify-between w-[52%] relative p-12 overflow-hidden">
+        <div className="absolute inset-0 gradient-aura opacity-10 pointer-events-none" />
+        <div className="absolute top-1/3 -left-32 w-96 h-96 rounded-full blur-3xl opacity-20"
+          style={{ background: "oklch(0.55 0.28 270)" }} />
+
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex items-center gap-3 relative z-10"
+        >
+          <div className="w-10 h-10 rounded-xl gradient-aura flex items-center justify-center glow-violet">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-2xl font-bold gradient-text">Aura CRM</span>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="relative z-10 space-y-8"
+        >
+          <div>
+            <h1 className="text-4xl font-extrabold tracking-tight leading-tight text-foreground mb-4">
+              Start your journey<br />
+              <span className="gradient-text">with Aura AI</span>
+            </h1>
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-md">
+              Join 2,400+ sales teams already using Aura CRM to close more deals with less effort.
+            </p>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 1: Basic Information</CardTitle>
-              <CardDescription>
-                Tell us about yourself to get started
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {error && (
-                <Alert variant="destructive" className="mb-6">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+          <div className="space-y-3">
+            {perks.map((perk, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.08 }}
+                className="flex items-center gap-3"
+              >
+                <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                <span className="text-sm text-foreground">{perk}</span>
+              </motion.div>
+            ))}
+          </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        placeholder="First name"
-                        className="pl-10"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        placeholder="Last name"
-                        className="pl-10"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
+          {/* Stat bar */}
+          <div className="glass-card rounded-2xl p-6 grid grid-cols-3 gap-4">
+            {[
+              { val: "2.4K+", label: "Teams" },
+              { val: "98%", label: "Satisfaction" },
+              { val: "3.2x", label: "Avg ROI" },
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <p className="text-2xl font-bold gradient-text">{stat.val}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-xs text-muted-foreground relative z-10"
+        >
+          © 2026 Aura CRM. All rights reserved.
+        </motion.p>
+      </div>
+
+      {/* Right panel */}
+      <motion.div
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex-1 flex items-center justify-center p-8"
+      >
+        <div className="w-full max-w-md space-y-8">
+          <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
+            <div className="w-10 h-10 rounded-xl gradient-aura flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-2xl font-bold gradient-text">Aura CRM</span>
+          </div>
+
+          <div>
+            <h2 className="text-3xl font-bold text-foreground">Create account</h2>
+            <p className="text-muted-foreground mt-1">Start your 14-day free trial</p>
+          </div>
+
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Tabs value={role} onValueChange={(v) => setRole(v as Role)}>
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="ADMIN" className="gap-1.5">
+                <Shield className="w-3.5 h-3.5" />Admin
+              </TabsTrigger>
+              <TabsTrigger value="MANAGER" className="gap-1.5">
+                <Users className="w-3.5 h-3.5" />Manager
+              </TabsTrigger>
+              <TabsTrigger value="CLIENT" className="gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" />Client
+              </TabsTrigger>
+            </TabsList>
+
+            {(["ADMIN", "MANAGER", "CLIENT"] as Role[]).map((r) => (
+              <TabsContent key={r} value={r} className="mt-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
                     <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="pl-10"
-                      value={formData.email}
-                      onChange={handleInputChange}
+                      id="name"
+                      type="text"
+                      placeholder="Elena Vasquez"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-11"
                       required
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company (Optional)</Label>
-                  <div className="relative">
-                    <Building className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Work Email</Label>
                     <Input
-                      id="company"
-                      name="company"
-                      placeholder="Your company name"
-                      className="pl-10"
-                      value={formData.company}
-                      onChange={handleInputChange}
+                      id="email"
+                      type="email"
+                      placeholder="you@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-11"
+                      required
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Select Your Role</Label>
-                  <div className="grid gap-3">
-                    <Button
-                      type="button"
-                      variant={formData.role === 'ADMIN' ? 'default' : 'outline'}
-                      className="justify-start h-auto p-4"
-                      onClick={() => handleRoleSelect('ADMIN')}
-                    >
-                      <div className="text-left">
-                        <div className="font-medium">Administrator</div>
-                        <div className="text-sm text-slate-500">
-                          Full system access and user management
-                        </div>
-                      </div>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={formData.role === 'MANAGER' ? 'default' : 'outline'}
-                      className="justify-start h-auto p-4"
-                      onClick={() => handleRoleSelect('MANAGER')}
-                    >
-                      <div className="text-left">
-                        <div className="font-medium">Manager</div>
-                        <div className="text-sm text-slate-500">
-                          Team leadership and campaign management
-                        </div>
-                      </div>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={formData.role === 'CLIENT' ? 'default' : 'outline'}
-                      className="justify-start h-auto p-4"
-                      onClick={() => handleRoleSelect('CLIENT')}
-                    >
-                      <div className="text-left">
-                        <div className="font-medium">Client</div>
-                        <div className="text-sm text-slate-500">
-                          Personal dashboard and interaction tracking
-                        </div>
-                      </div>
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company Name</Label>
+                    <Input
+                      id="company"
+                      type="text"
+                      placeholder="Acme Corp"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      className="h-11"
+                    />
                   </div>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Min 8 characters"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-11 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="pt-4">
-                  <p className="text-center text-sm text-slate-600">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-blue-600 hover:underline font-medium">
-                      Sign in
-                    </Link>
+                  <p className="text-xs text-muted-foreground">
+                    By creating an account, you agree to our{" "}
+                    <span className="text-primary cursor-pointer hover:underline">Terms of Service</span>
+                    {" "}and{" "}
+                    <span className="text-primary cursor-pointer hover:underline">Privacy Policy</span>.
                   </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                  <Button type="submit" className="w-full h-11 gradient-aura text-white border-0 glow-violet" disabled={loading}>
+                    {loading ? "Creating account..." : `Create ${r.charAt(0) + r.slice(1).toLowerCase()} Account`}
+                  </Button>
+                </form>
+              </TabsContent>
+            ))}
+          </Tabs>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">AI</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
-          <p className="text-slate-600 mt-2">Almost there! Set your password</p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Step 2: Security</CardTitle>
-            <CardDescription>
-              Create a secure password for your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Create a strong password"
-                    className="pl-10 pr-10"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Confirm your password"
-                    className="pl-10 pr-10"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="agreeToTerms"
-                    name="agreeToTerms"
-                    checked={formData.agreeToTerms}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, agreeToTerms: checked as boolean }))
-                    }
-                  />
-                  <Label htmlFor="agreeToTerms" className="text-sm">
-                    I agree to the{' '}
-                    <Link href="/terms" className="text-blue-600 hover:underline">
-                      Terms of Service
-                    </Link>{' '}
-                    and{' '}
-                    <Link href="/privacy" className="text-blue-600 hover:underline">
-                      Privacy Policy
-                    </Link>
-                  </Label>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setStep(1)}
-                >
-                  Back
-                </Button>
-                <Button type="submit" className="flex-1" disabled={isLoading || !isStep2Valid}>
-                  {isLoading ? 'Creating account...' : 'Create Account'}
-                </Button>
-              </div>
-            </form>
-
-            <div className="mt-6">
-              <Separator />
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-500">Or sign up with</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <Button variant="outline" className="w-full">
-                  <Chrome className="mr-2 h-4 w-4" />
-                  Google
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <Github className="mr-2 h-4 w-4" />
-                  GitHub
-                </Button>
-              </div>
-            </div>
-
-            <p className="text-center text-sm text-slate-600 mt-6">
-              Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 hover:underline font-medium">
-                Sign in
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      </motion.div>
     </div>
   )
 }

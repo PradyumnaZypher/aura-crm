@@ -1,518 +1,286 @@
-'use client'
-import VapiCallButton from '@/components/VapiCallButton' // This import is already correct
-// import AIChatButton from '@/components/AIChatButton'; // 1. Import
-import AIChatTrigger from '@/components/AIChatTrigger';
-import ExternalChatTrigger from '@/components/ExternalChatTrigger';
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import DashboardLayout from '@/components/layout/dashboard-layout'
-import EnhancedUserManagementTab from '@/components/admin/enhanced-user-management'
-import SystemManagementTab from '@/components/admin/system-management'
-import AnalyticsTab from '@/components/admin/analytics'
-import SettingsManagementTab from '@/components/admin/settings-management'
-import DashboardDatabaseTab from '@/components/admin/dashboard-database'
-import DashboardPerformanceTab from '@/components/admin/dashboard-performance'
-import QuickAddUser from '@/components/admin/quick-add-user'
-import FloatingAddUserButton from '@/components/admin/floating-add-user-button'
-import {
-  Users,
-  Activity,
-  DollarSign,
-  Server,
-  RefreshCw,
-  Zap,
-  Database,
-  Settings,
-  Shield,
-  UserPlus,
-} from 'lucide-react'
-import OutboundCallButton from '@/components/OutboundCallButton' // ----- NEW IMPORT ADDED -----
+"use client"
 
-interface DashboardStats {
-  totalUsers: number
-  activeUsers: number
-  totalRevenue: number
-  systemHealth: number
-  recentActivity: Array<{
-    id: string
-    user: string
-    action: string
-    time: string
-    status: 'success' | 'error' | 'warning'
-  }>
-  systemMetrics: {
-    cpuUsage: number
-    memoryUsage: number
-    diskUsage: number
-    uptime: string
-  }
-  timeframe: string
+import { motion } from "framer-motion"
+import {
+  Users, TrendingUp, Target, Phone, HeadphonesIcon,
+  Activity, Shield, Zap, AlertCircle, CheckCircle2,
+  ArrowUpRight,
+} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  ChartContainer, ChartTooltip, ChartTooltipContent,
+} from "@/components/ui/chart"
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid,
+} from "recharts"
+import {
+  adminStats, revenueData, sentimentData, aiCallVolumeData,
+  mockUsers,
+} from "@/lib/mock-data"
+import Link from "next/link"
+
+const revenueChartConfig = {
+  revenue: { label: "Revenue", color: "var(--chart-1)" },
+  target: { label: "Target", color: "var(--chart-2)" },
 }
 
+const sentimentChartConfig = {
+  positive: { label: "Positive", color: "var(--chart-3)" },
+  neutral: { label: "Neutral", color: "var(--chart-4)" },
+  negative: { label: "Negative", color: "var(--chart-5)" },
+}
+
+const callVolumeConfig = {
+  calls: { label: "AI Calls", color: "var(--chart-1)" },
+  successRate: { label: "Success %", color: "var(--chart-2)" },
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+}
+
+const topStats = [
+  { title: "Total Users", value: adminStats.totalUsers, change: 12, label: "vs last month", icon: Users, color: "text-chart-1" },
+  { title: "Monthly Revenue", value: `$${(adminStats.monthlyRevenue / 1000).toFixed(0)}K`, change: 18, label: "vs last month", icon: TrendingUp, color: "text-chart-3" },
+  { title: "Active Leads", value: adminStats.totalLeads, change: 9, label: "vs last month", icon: Target, color: "text-chart-2" },
+  { title: "AI Calls Today", value: adminStats.aiCallsToday, change: 23, label: "vs yesterday", icon: Phone, color: "text-chart-4" },
+  { title: "Avg Sentiment", value: `${adminStats.avgSentimentScore}%`, change: 4, label: "vs last week", icon: Activity, color: "text-chart-3" },
+  { title: "Open Tickets", value: adminStats.openTickets, change: -15, label: "vs last week", icon: HeadphonesIcon, color: "text-chart-5" },
+  { title: "System Health", value: `${adminStats.systemHealth}%`, icon: Shield, color: "text-chart-3" },
+  { title: "Active Users", value: adminStats.activeUsers, change: 5, label: "right now", icon: Zap, color: "text-chart-2" },
+]
+
+const recentAlerts = [
+  { type: "warning", message: "High ticket volume detected – Support queue", time: "5m ago" },
+  { type: "success", message: "AI outreach campaign launched successfully", time: "12m ago" },
+  { type: "success", message: "BioGen Labs deal moved to Negotiation stage", time: "28m ago" },
+  { type: "warning", message: "Database backup completed with warnings", time: "1h ago" },
+]
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    activeUsers: 0,
-    totalRevenue: 0,
-    systemHealth: 0,
-    recentActivity: [],
-    systemMetrics: {
-      cpuUsage: 0,
-      memoryUsage: 0,
-      diskUsage: 0,
-      uptime: '0d 0h 0m',
-    },
-    timeframe: 'month',
-  })
-  const [databaseStats, setDatabaseStats] = useState<any>(null)
-  const [performanceStats, setPerformanceStats] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [timeframe, setTimeframe] = useState('month')
-  const [activeTab, setActiveTab] = useState('overview')
-  const [quickAddUserOpen, setQuickAddUserOpen] = useState(false)
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [timeframe])
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
-  }
-
-  const fetchDashboardData = async () => {
-    try {
-      setIsLoading(true)
-      const [dashboardResponse, databaseResponse, performanceResponse] = await Promise.all([
-        fetch(`/api/admin/dashboard/stats?timeframe=${timeframe}`),
-        fetch('/api/admin/database/stats'),
-        fetch('/api/admin/performance/metrics'),
-      ])
-
-      if (!dashboardResponse.ok) {
-        throw new Error('Failed to fetch dashboard data')
-      }
-
-      const data = await dashboardResponse.json()
-      setStats(data)
-
-      if (databaseResponse.ok) {
-        const dbData = await databaseResponse.json()
-        setDatabaseStats(dbData)
-      }
-
-      if (performanceResponse.ok) {
-        const perfData = await performanceResponse.json()
-        setPerformanceStats(perfData)
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleUserCreated = () => {
-    fetchDashboardData()
-  }
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await fetchDashboardData()
-    setIsRefreshing(false)
-  }
-
-  const handleQuickAction = async (action: string) => {
-    try {
-      switch (action) {
-        case 'addUser':
-          setQuickAddUserOpen(true)
-          break
-        case 'security':
-          window.location.href = '/admin/security'
-          break
-        case 'database':
-          setActiveTab('database')
-          break
-        case 'performance':
-          setActiveTab('performance')
-          break
-        default:
-          console.log('Unknown action:', action)
-      }
-    } catch (error) {
-      console.error('Error handling quick action:', error)
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading dashboard...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <DashboardLayout userRole="admin">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-              <p className="text-slate-600">System overview and management</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="px-3 py-1 border border-slate-300 rounded-md text-sm"
-              >
-                <option value="day">Last 24 hours</option>
-                <option value="week">Last week</option>
-                <option value="month">Last month</option>
-                <option value="year">Last year</option>
-              </select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`}
-                />{' '}
-                Refresh
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTabChange('settings')}
-              >
-                <Settings className="h-4 w-4 mr-2" /> Settings
-              </Button>
-
-              {/* ----- VAPI BUTTON ADDED HERE ----- */}
-              <VapiCallButton />
-              <AIChatTrigger />
-              <ExternalChatTrigger />
-              {/* <AIChatButton /> */}
-              {/* ---------------------------------- */}
-
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder-avatar.jpg" />
-                  <AvatarFallback>AD</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">Admin User</span>
-              </div>
-            </div>
+      <motion.div variants={itemVariants} className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Admin Command Center</h1>
+          <p className="text-sm text-muted-foreground mt-1">Platform overview · Jul 1, 2026</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-glow" />
+            All systems operational
           </div>
         </div>
-      </header>
+      </motion.div>
 
-      {/* Body */}
-      <div className="p-6">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          {/* Total Users */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
-              <p className="text-xs text-slate-600">
-                <span className="text-green-600">+12%</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Active Users */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <Activity className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeUsers.toLocaleString()}</div>
-              <p className="text-xs text-slate-600">
-                <span className="text-green-600">+8%</span> from last week
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Revenue */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-              <p className="text-xs text-slate-600">
-                <span className="text-green-600">+23%</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* System Health */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Health</CardTitle>
-              <Server className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.systemHealth}%</div>
-              <Progress value={stats.systemHealth} className="mt-2" />
-            </CardContent>
-          </Card>
-
-          {/* Database */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Database</CardTitle>
-              <Database className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {databaseStats ? databaseStats.totalTables : 0}
-              </div>
-              <p className="text-xs text-slate-600">
-                {databaseStats ? databaseStats.totalSize : '0 MB'} •{' '}
-                <span
-                  className={`ml-1 ${
-                    databaseStats?.status === 'healthy'
-                      ? 'text-green-600'
-                      : databaseStats?.status === 'warning'
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {databaseStats?.status || 'Unknown'}
-                </span>
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Performance */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Performance</CardTitle>
-              <Zap className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {performanceStats ? performanceStats.cpu.usage : 0}%
-              </div>
-              <p className="text-xs text-slate-600">
-                CPU •{' '}
-                <span
-                  className={`ml-1 ${
-                    performanceStats?.cpu.usage > 80
-                      ? 'text-red-600'
-                      : performanceStats?.cpu.usage > 60
-                      ? 'text-yellow-600'
-                      : 'text-green-600'
-                  }`}
-                >
-                  {performanceStats?.cpu.usage > 80
-                    ? 'High'
-                    : performanceStats?.cpu.usage > 60
-                    ? 'Medium'
-                    : 'Good'}
-                </span>
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="database">Database</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Latest system activities and events</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {stats.recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-center gap-3">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            activity.status === 'success'
-                              ? 'bg-green-500'
-                              : activity.status === 'error'
-                              ? 'bg-red-500'
-                              : 'bg-yellow-500'
-                          }`}
-                        ></div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{activity.user}</p>
-                          <p className="text-xs text-slate-600">{activity.action}</p>
-                        </div>
-                        <span className="text-xs text-slate-500">{activity.time}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* System Metrics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Metrics</CardTitle>
-                  <CardDescription>Real-time system performance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">CPU Usage</span>
-                        <span className="text-sm text-slate-600">
-                          {stats.systemMetrics.cpuUsage}%
-                        </span>
-                      </div>
-                      <Progress value={stats.systemMetrics.cpuUsage} />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Memory Usage</span>
-                        <span className="text-sm text-slate-600">
-                          {stats.systemMetrics.memoryUsage}%
-                        </span>
-                      </div>
-                      <Progress value={stats.systemMetrics.memoryUsage} />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Disk Usage</span>
-                        <span className="text-sm text-slate-600">
-                          {stats.systemMetrics.diskUsage}%
-                        </span>
-                      </div>
-                      <Progress value={stats.systemMetrics.diskUsage} />
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-sm font-medium">Uptime</span>
-                      <span className="text-sm text-slate-600">
-                        {stats.systemMetrics.uptime}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+      {/* Stats grid */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {topStats.map((stat, i) => (
+          <motion.div
+            key={i}
+            variants={itemVariants}
+            whileHover={{ y: -2, transition: { duration: 0.15 } }}
+            className="glass-card rounded-2xl p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-medium">{stat.title}</p>
+              <stat.icon className={`w-4 h-4 ${stat.color}`} />
             </div>
+            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+            {stat.change !== undefined && (
+              <p className={`text-xs mt-1 font-medium ${stat.change >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                {stat.change >= 0 ? "↑" : "↓"} {Math.abs(stat.change)}%
+                <span className="text-muted-foreground font-normal ml-1">{stat.label}</span>
+              </p>
+            )}
+          </motion.div>
+        ))}
+      </motion.div>
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Common administrative tasks</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <Button
-                    className="h-auto p-4 flex flex-col gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all"
-                    onClick={() => setQuickAddUserOpen(true)}
-                  >
-                    <UserPlus className="h-6 w-6" />
-                    <span className="text-sm font-medium">Add User</span>
-                    <span className="text-xs opacity-90">Quick create</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 flex flex-col gap-2"
-                    onClick={() => (window.location.href = '/admin/users')}
-                  >
-                    <Users className="h-6 w-6" />
-                    <span className="text-sm">User Mgmt</span>
-                    <span className="text-xs opacity-90">Full control</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 flex flex-col gap-2"
-                    onClick={() => handleQuickAction('security')}
-                  >
-                    <Shield className="h-6 w-6" />
-                    <span className="text-sm">Security</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 flex flex-col gap-2"
-                    onClick={() => handleQuickAction('database')}
-                  >
-                    <Database className="h-6 w-6" />
-                    <span className="text-sm">Database</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto p-4 flex flex-col gap-2"
-                    onClick={() => handleQuickAction('performance')}
-                  >
-                    <Zap className="h-6 w-6" />
-                    <span className="text-sm">Performance</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue chart */}
+        <motion.div variants={itemVariants} className="lg:col-span-2">
+          <Card className="glass-card border-0">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Revenue vs Target</CardTitle>
+                <Badge variant="outline" className="text-xs">Last 7 months</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={revenueChartConfig} className="h-[220px] w-full">
+                <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="targetGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}K`} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area type="monotone" dataKey="revenue" stroke="var(--chart-1)" strokeWidth={2} fill="url(#revenueGrad)" />
+                  <Area type="monotone" dataKey="target" stroke="var(--chart-2)" strokeWidth={2} strokeDasharray="4 4" fill="url(#targetGrad)" />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-            {/* ----- OUTBOUND CALL COMPONENT ADDED HERE ----- */}
-            <OutboundCallButton />
-            {/* ------------------------------------------- */}
-
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <EnhancedUserManagementTab />
-          </TabsContent>
-          <TabsContent value="database" className="space-y-6">
-            <DashboardDatabaseTab />
-          </TabsContent>
-          <TabsContent value="performance" className="space-y-6">
-            <DashboardPerformanceTab />
-          </TabsContent>
-          <TabsContent value="system" className="space-y-6">
-            <SystemManagementTab />
-          </TabsContent>
-          <TabsContent value="analytics" className="space-y-6">
-            <AnalyticsTab />
-          </TabsContent>
-          <TabsContent value="settings" className="space-y-6">
-            <SettingsManagementTab />
-          </TabsContent>
-        </Tabs>
+        {/* Sentiment chart */}
+        <motion.div variants={itemVariants}>
+          <Card className="glass-card border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">AI Sentiment Trends</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={sentimentChartConfig} className="h-[220px] w-full">
+                <AreaChart data={sentimentData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--chart-3)" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="var(--chart-3)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area type="monotone" dataKey="positive" stroke="var(--chart-3)" strokeWidth={2} fill="url(#posGrad)" stackId="1" />
+                  <Area type="monotone" dataKey="neutral" stroke="var(--chart-4)" strokeWidth={1.5} fill="var(--chart-4)" fillOpacity={0.1} stackId="2" />
+                  <Area type="monotone" dataKey="negative" stroke="var(--chart-5)" strokeWidth={1.5} fill="var(--chart-5)" fillOpacity={0.1} stackId="3" />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      <QuickAddUser
-        open={quickAddUserOpen}
-        onOpenChange={setQuickAddUserOpen}
-        onSuccess={handleUserCreated}
-      />
-      <FloatingAddUserButton onSuccess={handleUserCreated} />
-    </DashboardLayout>
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* AI Call Volume */}
+        <motion.div variants={itemVariants}>
+          <Card className="glass-card border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">AI Call Volume</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={callVolumeConfig} className="h-[180px] w-full">
+                <BarChart data={aiCallVolumeData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.8} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="calls" fill="url(#barGrad)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Recent users */}
+        <motion.div variants={itemVariants}>
+          <Card className="glass-card border-0 h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Recent Users</CardTitle>
+                <Link href="/admin/users" className="text-xs text-primary hover:underline flex items-center gap-1">
+                  View all <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {mockUsers.slice(0, 5).map((user) => (
+                  <div key={user.id} className="flex items-center gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="text-xs font-semibold gradient-aura text-white">{user.initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-foreground">{user.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                    <Badge
+                      variant={user.role === "ADMIN" ? "default" : user.role === "MANAGER" ? "secondary" : "outline"}
+                      className="text-xs"
+                    >
+                      {user.role}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* System alerts */}
+        <motion.div variants={itemVariants}>
+          <Card className="glass-card border-0 h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">System Alerts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {recentAlerts.map((alert, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    {alert.type === "success"
+                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      : <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-foreground leading-relaxed">{alert.message}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{alert.time}</p>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-muted-foreground">Database Storage</span>
+                    <span className="font-medium text-foreground">68%</span>
+                  </div>
+                  <Progress value={68} className="h-1.5" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-muted-foreground">API Rate Limit</span>
+                    <span className="font-medium text-foreground">42%</span>
+                  </div>
+                  <Progress value={42} className="h-1.5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </motion.div>
   )
 }
