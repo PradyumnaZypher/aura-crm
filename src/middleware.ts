@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
+import { jwtVerify } from 'jose'
 
-export function middleware(request: NextRequest) {
+// Encode the secret once at module level (jose requires Uint8Array)
+const getSecret = () => new TextEncoder().encode(
+  process.env.JWT_SECRET || 'fallback-secret'
+)
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes that don't require authentication
@@ -31,28 +36,30 @@ export function middleware(request: NextRequest) {
   }
 
   try {
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any
-    
+    // Verify JWT token using jose (Edge Runtime compatible)
+    const { payload: decoded } = await jwtVerify(token, getSecret())
+    const role = decoded.role as string
+    const userId = decoded.userId as string
+    const email = decoded.email as string
+
     // Check if route requires specific role
-    if (pathname.startsWith('/admin') && decoded.role !== 'ADMIN') {
-      // Redirect to appropriate dashboard
-      return NextResponse.redirect(new URL(`/${decoded.role.toLowerCase()}/dashboard`, request.url))
+    if (pathname.startsWith('/admin') && role !== 'ADMIN') {
+      return NextResponse.redirect(new URL(`/${role.toLowerCase()}/dashboard`, request.url))
     }
-    
-    if (pathname.startsWith('/manager') && decoded.role !== 'MANAGER') {
-      return NextResponse.redirect(new URL(`/${decoded.role.toLowerCase()}/dashboard`, request.url))
+
+    if (pathname.startsWith('/manager') && role !== 'MANAGER') {
+      return NextResponse.redirect(new URL(`/${role.toLowerCase()}/dashboard`, request.url))
     }
-    
-    if (pathname.startsWith('/client') && decoded.role !== 'CLIENT') {
-      return NextResponse.redirect(new URL(`/${decoded.role.toLowerCase()}/dashboard`, request.url))
+
+    if (pathname.startsWith('/client') && role !== 'CLIENT') {
+      return NextResponse.redirect(new URL(`/${role.toLowerCase()}/dashboard`, request.url))
     }
 
     // Add user info to request headers for downstream use
     const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', decoded.userId)
-    requestHeaders.set('x-user-email', decoded.email)
-    requestHeaders.set('x-user-role', decoded.role)
+    requestHeaders.set('x-user-id', userId)
+    requestHeaders.set('x-user-email', email)
+    requestHeaders.set('x-user-role', role)
 
     return NextResponse.next({
       request: {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import ZAI from 'z-ai-web-dev-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     
     if (enableAI) {
       try {
-        const zai = await ZAI.create()
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
         
         const prompt = `
           Create a personalized opening script for a call to ${lead.firstName} ${lead.lastName}.
@@ -61,22 +61,14 @@ export async function POST(request: NextRequest) {
           Keep it conversational and natural (under 30 seconds when spoken).
         `
 
-        const completion = await zai.chat.completions.create({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert sales communication specialist. Create natural, engaging phone scripts.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 200
+        const message = await anthropic.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 200,
+          messages: [{ role: 'user', content: prompt }],
+          system: 'You are an expert sales communication specialist. Create natural, engaging phone scripts.'
         })
 
-        script = completion.choices[0]?.message?.content || script
+        script = (message.content[0] as { type: string; text: string })?.text || script
       } catch (error) {
         console.error('AI script generation failed:', error)
         // Use default script if AI fails
@@ -84,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create AI call record
-    const aiCall = await db.aiCall.create({
+    const aiCall = await db.aICall.create({
       data: {
         uniqueId: `ai_call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         leadId: leadId,
@@ -155,7 +147,7 @@ export async function POST(request: NextRequest) {
     console.error('AI call initiation error:', error)
     return NextResponse.json({ 
       error: 'Failed to initiate AI call',
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }

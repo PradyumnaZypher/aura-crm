@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import ZAI from 'z-ai-web-dev-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the AI call record
-    const aiCall = await db.aiCall.findUnique({
+    const aiCall = await db.aICall.findUnique({
       where: { id: callId },
       include: {
         lead: {
@@ -42,16 +42,16 @@ export async function POST(request: NextRequest) {
     let keyPoints = ""
     let sentimentAnalysis = sentiment || { sentiment: 'neutral', score: 0 }
     let nextSteps = ""
+    let transcriptText = ""
 
     if (transcript && transcript.length > 0) {
-      try {
-        const zai = await ZAI.create()
-        
-        const transcriptText = transcript
-          .map(t => `${t.speaker}: ${t.text}`)
-          .join('\n')
+      transcriptText = transcript
+        .map((t: { speaker: string; text: string }) => `${t.speaker}: ${t.text}`)
+        .join('\n')
 
-        // Generate call summary
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+        
         const summaryPrompt = `
           Analyze this phone call transcript and provide:
           1. A brief summary (2-3 sentences)
@@ -66,22 +66,14 @@ export async function POST(request: NextRequest) {
           Return as JSON with keys: summary, keyPoints, sentiment, nextSteps
         `
 
-        const completion = await zai.chat.completions.create({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert call analyst. Provide concise, actionable insights from call transcripts.'
-            },
-            {
-              role: 'user',
-              content: summaryPrompt
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 500
+        const message = await anthropic.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 500,
+          messages: [{ role: 'user', content: summaryPrompt }],
+          system: 'You are an expert call analyst. Provide concise, actionable insights from call transcripts.'
         })
 
-        const analysisText = completion.choices[0]?.message?.content || '{}'
+        const analysisText = (message.content[0] as { type: string; text: string })?.text || '{}'
         
         try {
           const analysis = JSON.parse(analysisText)
@@ -100,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update AI call record
-    const updatedCall = await db.aiCall.update({
+    const updatedCall = await db.aICall.update({
       where: { id: callId },
       data: {
         status: 'COMPLETED',
@@ -112,7 +104,7 @@ export async function POST(request: NextRequest) {
         summary: summary,
         keyPoints: keyPoints,
         nextSteps: nextSteps,
-        followUpRequired: nextSteps && nextSteps.length > 0
+        followUpRequired: nextSteps.length > 0
       }
     })
 
@@ -165,7 +157,7 @@ export async function POST(request: NextRequest) {
     console.error('AI call ending error:', error)
     return NextResponse.json({ 
       error: 'Failed to end AI call',
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }

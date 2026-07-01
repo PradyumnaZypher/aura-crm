@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,18 @@ import { Badge } from '@/components/ui/badge'
 import { Phone, Mail, FileText, Plus, Calendar, Clock, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+
+/** Thin inner component that reads search params — must be inside <Suspense> in Next.js 15 */
+function SearchParamsReader({ onActionNew }: { onActionNew: () => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      onActionNew()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+  return null
+}
 
 interface Interaction {
   id: string
@@ -37,14 +49,11 @@ export default function InteractionsPage() {
   const [submitting, setSubmitting] = useState(false)
   
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (searchParams.get('action') === 'new') {
-      setShowCreateModal(true)
-    }
     fetchInteractions()
-  }, [searchParams])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fetchInteractions = async () => {
     try {
@@ -129,6 +138,10 @@ export default function InteractionsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* SearchParamsReader must live inside Suspense — Next.js 15 requirement */}
+      <Suspense fallback={null}>
+        <SearchParamsReader onActionNew={() => setShowCreateModal(true)} />
+      </Suspense>
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
